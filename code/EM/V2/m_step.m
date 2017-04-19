@@ -1,0 +1,31 @@
+function theta=m_step(A,hidden_indexes,hidden_vals,theta_shape,training_data,q)
+f=zeros(theta_shape);
+theta=zeros(theta_shape);
+theta1=zeros(theta_shape);
+number_variables=size(A,1);
+data_size=size(training_data,1);
+hidden_size=size(hidden_vals,1);
+for i=1:data_size
+    for j=1:hidden_size
+        training_data(i,hidden_indexes)=hidden_vals(j,:);
+        for k=1:number_variables
+            for l=1:number_variables
+                if A(k,l)>0 
+                    f(k,l,training_data(i,k),training_data(i,l))= ...
+                        f(k,l,training_data(i,k),training_data(i,l))+q(i,j);
+                        
+               end
+            end
+        end
+    end
+end
+theta1(f == 0)=1;
+f = reshape(f,[numel(theta),1]);
+theta1 = reshape(theta1,[numel(theta),1]);
+%theta=linprog(f*-1,[f'; ones(1,numel(theta))*-1],[1 0],theta1',0,[],[]);
+theta=linprog(f*-1, ones(1,numel(theta)), 0,theta1',0,ones(1,numel(theta))*-100,ones(1,numel(theta))*0);
+if size(theta,1)==0
+else
+theta=reshape(theta,theta_shape);
+end
+end
