@@ -1,0 +1,87 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{esint}
+\title{MLE using GOP}
+\DeclareMathOperator*{\argmax}{arg\,max}
+
+\newcommand{\avsum}{\mathop{\mathpalette\avsuminner\relax}\displaylimits}
+
+\makeatletter
+\newcommand\avsuminner[2]{%
+  {\sbox0{$\m@th#1\sum$}%
+   \vphantom{\usebox0}%
+   \ooalign{%
+     \hidewidth
+     \smash{\vrule height\dimexpr\ht0+1pt\relax depth\dimexpr\dp0+1pt\relax}%
+     \hidewidth\cr
+     $\m@th#1\sum$\cr
+   }%
+  }%
+}
+\makeatother
+
+\begin{document}
+\maketitle
+\section{Model}
+We will try to maximize likelihood for simple model with only one hidden variable and n observed variables.
+\begin{align*}
+p(x)&=\theta_h(x_h)\prod_i \theta_{ih}(x_i,x_h)
+\end{align*}
+Likelihood of M samples is,
+\begin{align*}
+L(\theta)&=\prod_{m=1}^M \sum_{x_h} p(x_1^m,...,x_n^m,x_h)
+\end{align*}
+Writing it in variational form,
+\begin{align*}
+\log L(\theta)&=\max_b\sum_m \langle b_h^m,\log\theta'_h \rangle + H(b_h^m)\\
+&\text{where, } \theta'_h(x_h)=\theta_h(x_h)*\prod_i \theta_{ih}(x_i^m,x_h)\\
+\log L(\theta)&=\max_b\sum_m \sum_{x_h}b_h^m(x_h)\log(\theta_h(x_h))+\sum_m\sum_{x_h}\sum_i b_h^m(x_h)\log(\theta_{ih}(x_i^m,x_h))+\sum_mH(b_h^m)\\
+\end{align*}
+Define $\bar{b}_h(x_h)$ and $\bar{b}_{ih}(x_i,x_h)$ and rewrite the formulation,
+\begin{align*}
+\log L(\theta)&=\max_b\sum_{x_h}\bar{b}_h(x_h)\log(\theta_h(x_h))+\sum_i \sum_{x_i,x_h} \bar{b}_{ih}(x_i,x_h)\log(\theta_{ih}(x_i,x_h))+\sum_mH(b_h^m)\\
+&\begin{aligned}
+\text{where, } &\bar{b}_h(x_h)=\frac{1}{M}\sum_m b_h^m(x_h)\\
+&\bar{b}_{ih}(x_i,x_h)=\frac{1}{M}\sum_{\substack{m\\ x_i^m=x_i}} b_h^m(x_h)\\
+\end{aligned}
+\end{align*}
+\section{Problem}
+We want to solve following problem,
+\begin{align*}
+-\log L&=\min_{\theta,b}-\sum_{x_h}\bar{b}_h(x_h)\log(\theta_h(x_h))-\sum_i \sum_{x_i,x_h} \bar{b}_{ih}(x_i,x_h)\log(\theta_{ih}(x_i,x_h))-\sum_mH(b_h^m)\\
+\end{align*}
+with respect to following constraints,
+\begin{align*}
+&\bar{b}_h(x_h)=\sum_m b_h^m(x_h), \forall x_h\\
+&\bar{b}_{ih}(x_i,x_h)=\sum_{\substack{m\\ x_i^m=x_i}}b_h^m(x_h),  \forall x_i, x_h \\
+&\sum_{x_h}\theta_h(x_h)=1\\
+&\sum_{x_i}\theta_{ih}(x_i,x_h)=1\\
+&\sum_{x_h}b_h^m(x_h)=1, \forall m\in M
+\end{align*}
+\section{GOP formulation}
+\subsection{Primal problem}
+We need to solve following primal problem for fixed $\theta_k$ at k'th iteration,
+\begin{align*}
+P^k(\theta^k)&=\min_{b}\left\{-\sum_{x_h}\bar{b}_h(x_h)\log(\theta^k_h(x_h))-\sum_i \sum_{x_i,x_h} \bar{b}_{ih}(x_i,x_h)\log(\theta^k_{ih}(x_i,x_h))-\sum_mH(b_h^m) \right. \\ & \left. +\sum_{x_h}\lambda_h(x_h)\left(\bar{b}_h(x_h)-\sum_m b_h^m(x_h)\right)+\sum_i\sum_{x_i,x_h}\lambda_{ih}(x_i,x_h)\left(\bar{b}_{ih}(x_i,x_h)-\sum_{\substack{m\\ x_i^m=x_i}} b_h^m(x_h)\right)\right. \\ & \left. +\sum_{m=1}^M\lambda_m\left(\sum_{x_h}b_h^m(x_h)-1\right) +\lambda_{\theta_h}\left(\sum_{x_h}\theta_h^k(x_h)-1 \right)+\sum_{i, x_h}\lambda_{\theta_{ih}}(x_h)\left(\sum_{x_i}\theta_{ih}^k(x_i,x_h)-1\right) \right\} \\
+\end{align*}
+Taking derivatives to get $\lambda$ values,
+\begin{align*}
+\frac{\partial P^k(\theta^k)}{\partial \bar{b}_h(x_h)}&=-\log(\theta_h^k(x_h))+\lambda^k_h(x_h)=0\Rightarrow \lambda^k_h(x_h)=\log(\theta_h^k(x_h))\\
+\frac{\partial P^k(\theta^k)}{\partial \bar{b}_{ih}(x_i,x_h)}&=-\log(\theta^k_{ih}(x_i,x_h))+\lambda^k_{ih}(x_i,x_h)=0\Rightarrow \lambda^k_{ih}(x_i,x_h)=\log(\theta^k_{ih}(x_i,x_h))\\
+\frac{\partial P^k(\theta^k)}{\partial {b}_h^m(x_h)}&=0\Rightarrow \lambda^m=\log(\theta_h^k(x_h))+\sum_i\log(\theta_{ih}^k(x_i^m,x_h))-\log(b_h^m(x_h))-1\text{ ,  }\forall x_h\\
+\frac{\partial P^k(\theta^k)}{\partial \theta_h^k(x_h)}&=0\Rightarrow \lambda_{\theta_h}=\frac{\bar{b}_h(x_h)}{\theta_h^k(x_h)}\text{ ,  }\forall x_h\\
+\frac{\partial P^k(\theta^k)}{\partial \theta_{ih}^k(x_i,x_h)}&=0\Rightarrow \lambda_{\theta_{ih}}=\frac{ \bar{b}_{ih}(x_i,x_h)}{\theta_{ih}^k(x_i,x_h)}\text{ ,  }\forall x_i,x_h\\
+\end{align*}
+\subsection{Relaxed dual problem}
+At k'th iteration, we solve following relaxed dual problem,
+\begin{align*}
+&\min_{\theta,\mu_B} \mu_B\\
+\text{s.t.   }&\mu_B\geq L^k(b^{B_l},\theta,\lambda^k)|_{b^k}^{lin}
+\end{align*}
+Linearization of lagrange function around $b^k$ is defined as,
+\begin{align*}
+ L^k(b^{B_l},\theta,\lambda^k)|_{b^k}^{lin}=
+\end{align*}
+\end{document}

@@ -1,0 +1,181 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{esint}
+\title{MLE using GOP}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\allowdisplaybreaks
+
+\newcommand{\avsum}{\mathop{\mathpalette\avsuminner\relax}\displaylimits}
+
+\makeatletter
+\newcommand\avsuminner[2]{%
+  {\sbox0{$\m@th#1\sum$}%
+   \vphantom{\usebox0}%
+   \ooalign{%
+     \hidewidth
+     \smash{\vrule height\dimexpr\ht0+1pt\relax depth\dimexpr\dp0+1pt\relax}%
+     \hidewidth\cr
+     $\m@th#1\sum$\cr
+   }%
+  }%
+}
+\makeatother
+
+\begin{document}
+\maketitle
+\section{Model}
+We will try to maximize likelihood for simple model with only one hidden variable and n observed variables.
+\begin{align*}
+p(x)&=\theta_h(x_h)\prod_i \theta_{ih}(x_i,x_h)
+\end{align*}
+Likelihood of M samples is,
+\begin{align*}
+L(\theta)&=\prod_{m=1}^M \sum_{x_h} p(x_1^m,...,x_n^m,x_h)
+\end{align*}
+Taking log of likelihood and normalizing it, we get,
+\begin{align*}
+\log L(\theta)&=\frac{1}{M}\sum_{m=1}^M \log \sum_{x_h} p(x_1^m,...,x_n^m,x_h)
+\end{align*}
+Writing it in variational form,
+\begin{align*}
+\log L(\theta)&=\max_b\frac{1}{M}\sum_m \langle b_h^m,\log\theta'_h \rangle + H(b_h^m)\\
+&\text{where, } \theta'_h(x_h)=\theta_h(x_h)*\prod_i \theta_{ih}(x_i^m,x_h)\\
+\log L(\theta)&=\max_b\frac{1}{M}\sum_m \sum_{x_h}b_h^m(x_h)\log(\theta_h(x_h))+\frac{1}{M}\sum_m\sum_{x_h}\sum_i b_h^m(x_h)\log(\theta_{ih}(x_i^m,x_h))+\frac{1}{M}\sum_mH(b_h^m)\\
+\end{align*}
+Define $\bar{b}_h(x_h)$ and $\bar{b}_{ih}(x_i,x_h)$ and rewrite the formulation,
+\begin{align*}
+\log L(\theta)&=\max_b\sum_{x_h}\bar{b}_h(x_h)\log(\theta_h(x_h))+\sum_i \sum_{x_i,x_h} \bar{b}_{ih}(x_i,x_h)\log(\theta_{ih}(x_i,x_h))+\frac{1}{M}\sum_mH(b_h^m)\\
+&\begin{aligned}
+\text{where, } &\bar{b}_h(x_h)=\frac{1}{M}\sum_m b_h^m(x_h)\\
+&\bar{b}_{ih}(x_i,x_h)=\frac{1}{M}\sum_{\substack{m\\ x_i^m=x_i}} b_h^m(x_h)\\
+\end{aligned}
+\end{align*}
+\section{Problem}
+We want to solve following problem,
+\begin{align*}
+-\log L&=\min_{\theta,b}-\sum_{x_h}\bar{b}_h(x_h)\log(\theta_h(x_h))-\sum_i \sum_{x_i,x_h} \bar{b}_{ih}(x_i,x_h)\log(\theta_{ih}(x_i,x_h))-\frac{1}{M}\sum_mH(b_h^m)\\
+\end{align*}
+with respect to following constraints,
+\begin{align*}
+&\bar{b}_h(x_h)=\frac{1}{M}\sum_m b_h^m(x_h), \forall x_h\\
+&\bar{b}_{ih}(x_i,x_h)=\frac{1}{M}\sum_{\substack{m\\ x_i^m=x_i}}b_h^m(x_h),  \forall x_i, x_h \\
+&\sum_{x_h}\theta_h(x_h)=1\\
+&\sum_{x_i}\theta_{ih}(x_i,x_h)=1\\
+&\sum_{x_h}b_h^m(x_h)=1, \forall m\in M
+\end{align*}
+\section{Primal formulation}
+\subsection{Primal problem}
+We need to solve following primal problem for fixed $\theta$ ,
+\begin{align*}
+P(\theta)&=\min_{\bar{b}, b}\left\{-\sum_{x_h}\bar{b}_h(x_h)\log(\theta_h(x_h))-\sum_i \sum_{x_i,x_h} \bar{b}_{ih}(x_i,x_h)\log(\theta_{ih}(x_i,x_h))-\frac{1}{M}\sum_mH(b_h^m) \right. \\ & \left. +\sum_{x_h}\lambda_h(x_h)\left(\bar{b}_h(x_h)-\frac{1}{M}\sum_m b_h^m(x_h)\right)+\sum_i\sum_{x_i,x_h}\lambda_{ih}(x_i,x_h)\left(\bar{b}_{ih}(x_i,x_h)-\frac{1}{M}\sum_{\substack{m\\ x_i^m=x_i}} b_h^m(x_h)\right)\right. \\ & \left. +\sum_{m=1}^M\lambda_m\left(\sum_{x_h}b_h^m(x_h)-1\right) +\lambda_{\theta_h}\left(\sum_{x_h}\theta_h(x_h)-1 \right)+\sum_{i, x_h}\lambda_{\theta_{ih}}(x_h)\left(\sum_{x_i}\theta_{ih}(x_i,x_h)-1\right) \right\} \\
+\end{align*}
+Taking derivatives to get $\lambda$ values,
+\begin{align*}
+\frac{\partial P(\theta)}{\partial \bar{b}_h(x_h)}&=-\log(\theta_h(x_h))+\lambda_h(x_h)=0\Rightarrow \lambda_h(x_h)=\log(\theta_h(x_h))\\
+\frac{\partial P(\theta)}{\partial \bar{b}_{ih}(x_i,x_h)}&=-\log(\theta_{ih}(x_i,x_h))+\lambda_{ih}(x_i,x_h)=0\Rightarrow \lambda_{ih}(x_i,x_h)=\log(\theta_{ih}(x_i,x_h))\\
+\frac{\partial P(\theta)}{\partial {b}_h^m(x_h)}&=0\Rightarrow  1+\log b_h^m(x_h)-\frac{1}{M}\lambda_h(x_h)-\frac{1}{M}\sum_i\lambda_{ih}(x_i^m,x_h)+\lambda_m=0\text{ ,  }\forall x_h\\
+&\text{so $b_h^m(x_h)$ has closed form solution,}\\
+&b_h^m(x_h)=\frac{\exp(\frac{1}{M}\left(\lambda_h(x_h)+\sum_i \lambda_{ih}(x_i^m,x_h)\right))}{\exp(\lambda_m + 1)}\\
+&\text{Here $exp(\lambda_m + 1)$ is normalization factor for $b_h^m(x_h)$, such that,}\\
+&\exp(\lambda_m+1)=\sum_{x_h}\exp\left(\frac{1}{M}\left(\lambda_h(x_h)+\sum_i \lambda_{ih}(x_i^m,x_h)\right)\right)\\
+%&\lambda_m=\log\left(\sum_{x_h}\exp\left(\frac{1}{M}\left(\lambda_h(x_h)+\sum_i \lambda_{ih}(x_i^m,x_h)\right)\right)\right)-1\\
+\frac{\partial P(\theta)}{\partial \theta_h(x_h)}&=0\Rightarrow \theta_h(x_h)=\frac{\bar{b}_h(x_h)}{\lambda_{\theta_h}}\text{ ,  }\forall x_h\\
+&\text{Summing over $x_h$ on both sides,}\\
+&\sum_{x_h}\theta_h(x_h)=\frac{\sum_{x_h}\bar{b}_h(x_h)}{\lambda_{\theta_h}}\\
+&\text{Both sums equal 1, so}\\
+&\lambda_{\theta_h}=1\\
+\text{Similarly,}\\
+\frac{\partial P(\theta)}{\partial \theta_{ih}(x_i,x_h)}&=0\Rightarrow \lambda_{\theta_{ih}}=\frac{ \bar{b}_{ih}(x_i,x_h)}{\theta_{ih}(x_i,x_h)}\text{ ,  }\forall x_i,x_h\\
+\end{align*}
+Substituting $\bar{b}$ for $\theta$  Primal problem can be written as
+\begin{align*}
+P&=\min_{b}\left\{-\sum_{x_h}\bar{b}_h(x_h)\log(\bar{b}_h(x_h))-\sum_i \sum_{x_i,x_h} \bar{b}_{ih}(x_i,x_h)\log(\bar{b}_{ih}(x_i,x_h))-\frac{1}{M}\sum_mH(b_h^m) \right. \\ & \left. +\sum_{x_h}\lambda_h(x_h)\left(\bar{b}_h(x_h)-\frac{1}{M}\sum_m b_h^m(x_h)\right)+\sum_i\sum_{x_i,x_h}\lambda_{ih}(x_i,x_h)\left(\bar{b}_{ih}(x_i,x_h)-\frac{1}{M}\sum_{\substack{m\\ x_i^m=x_i}} b_h^m(x_h)\right)\right. \\ & \left. +\sum_{m=1}^M\lambda_m\left(\sum_{x_h}b_h^m(x_h)-1\right) +\lambda_{\bar{b}_h}\left(\sum_{x_h}\bar{b}_h(x_h)(x_h)-1 \right)+\sum_{i, x_h}\lambda_{\bar{b}_{ih}}(x_h)\left(\sum_{x_i}\bar{b}_{ih}(x_i,x_h)-1\right) \right\} \\&
+=\min_{\bar{b}, b} f(\bar{b}, b)
+\end{align*}
+
+\begin{align*}
+P&=\min_{b}\left\{-\sum_{x_h}\frac{1}{M}\sum_m b_h^m(x_h)\log(\frac{1}{M}\sum_m b_h^m(x_h))-\sum_i \sum_{x_i,x_h} \frac{1}{M}\sum_{\substack{m\\ x_i^m=x_i}} b_h^m(x_h)\log(\frac{1}{M}\sum_{\substack{m\\ x_i^m=x_i}} b_h^m(x_h))-\frac{1}{M}\sum_mH(b_h^m) \right. \\ & \left. +\sum_{m=1}^M\lambda_m\left(\sum_{x_h}b_h^m(x_h)-1\right) +\lambda_{b_h}\left(\sum_{x_h}\frac{1}{M}\sum_m b_h^m(x_h)-1 \right)+\sum_{i, x_h}\lambda_{b_{ih}}(x_h)\left(\sum_{x_i} \frac{1}{M}\sum_{\substack{m\\ x_i^m=x_i}} b_h^m(x_h)-1\right) \right\} \\&
+=\min_b f( b)
+\end{align*}
+
+\begin{align*}
+P&=\min_{b}\left\{-\sum_{x_h}\frac{1}{M}\sum_m b_h^m(x_h)\log(\frac{1}{M}\sum_m b_h^m(x_h))-\sum_i \sum_{x_i,x_h} \frac{1}{M}\sum_{\substack{m\\ x_i^m=x_i}} b_h^m(x_h)\log(\frac{1}{M}\sum_{\substack{m\\ x_i^m=x_i}} b_h^m(x_h))-\frac{1}{M}\sum_mH(b_h^m) \right. \\ & \left. +\sum_{m=1}^M\log(\frac{1}{M}\sum_m b_h^m(x_h))\left(\sum_{x_h}b_h^m(x_h)-1\right) -\log(b_h^m(x_h))\left(\sum_{x_h}\frac{1}{M}\sum_m b_h^m(x_h)-1 \right)  \right. \\ & \left.+\sum_{i, x_h}(\frac{1}{M} + \log(\frac{1}{M}\sum_{\substack{m\\ x_i^m=x_i}} b_h^m(x_h)))\left(\sum_{x_i} \frac{1}{M}\sum_{\substack{m\\ x_i^m=x_i}} b_h^m(x_h)-1\right) \right\} \\&
+=\min_b f( b)
+\end{align*}
+\subsection{Calculate first Conjugate}
+We can calculate the first Conjugate for f as follows
+\begin{align*}
+f^*(\bar{b}^*, b^*) &= sup_{\bar{b}, b} (<\bar{b}^*, \bar{b}> + < b^*, b> - f(\bar{b},b))
+\end{align*}
+
+Let g($\bar{b}$, b) = $<\bar{b}^*, \bar{b}> + < b^*, b> - f(\bar{b},b)$ ,
+Taking the derivatives to calculate $\bar{b}$, b values
+\begin{align*}
+\frac{\partial g(\bar{b}, b)}{\partial \bar{b}_h(x_h)}&= \bar{b}^*_h(x_h) +\log(\bar{b}_h(x_h))-\lambda_h(x_h) - \lambda_{\bar{b}_h}+ 1=0\Rightarrow -\bar{b}^*_h(x_h) +\lambda_h(x_h) + \lambda_{\bar{b}_h}- 1= \log(\bar{b}_h(x_h))\Rightarrow \\& \exp(-\bar{b}^*_h(x_h) +\lambda_h(x_h) + \lambda_{\bar{b}_h}- 1)= \bar{b}_h(x_h)\\
+\frac{\partial g(\bar{b}, b)}{\partial \bar{b}_{ih}(x_i,x_h)}&=\bar{b}^*_{ih}(x_i,x_h) +\log(\bar{b}_{ih}(x_i,x_h))-\lambda_{ih}(x_i,x_h)- \lambda_{\bar{b}_{ih}} +1=0\Rightarrow \\& -\bar{b}^*_{ih}(x_i,x_h)+\lambda_{ih}(x_i,x_h)+ \lambda_{\bar{b}_{ih}} -1=\log(\bar{b}_{ih}(x_i,x_h)) \Rightarrow \\& \exp(-\bar{b}^*_{ih}(x_i,x_h)+\lambda_{ih}(x_i,x_h)+ \lambda_{\bar{b}_{ih}} -1)=\bar{b}_{ih}(x_i,x_h)\\
+\frac{\partial g(\bar{b}, b)}{\partial {b}_h^m(x_h)}&= {b}_h^{*^m}(x_h)- \frac{1}{M} - \frac{\log (b_h^m(x_h))}{M} + \frac{\lambda_h(x_h)}{M} - \lambda_m - \frac{1}{M} * \sum_i\sum_{x_i,x_h}\sum_{\substack{m\\ x_i^m=x_i}}\lambda_{ih}(x_i,x_h)  \Rightarrow \\& M * {b}_h^{*^m}(x_h)- 1  + \lambda_h(x_h) - M * \lambda_m -  \sum_i\sum_{x_i,x_h}\sum_{\substack{m\\ x_i^m=x_i}}\lambda_{ih}(x_i,x_h) = \log (b_h^m(x_h)) \Rightarrow \\& \exp(M * {b}_h^{*^m}(x_h)- 1  + \lambda_h(x_h) - M * \lambda_m -  \sum_i\sum_{x_i,x_h}\sum_{\substack{m\\ x_i^m=x_i}}\lambda_{ih}(x_i,x_h) ) = b_h^m(x_h)
+\end{align*}
+\begin{align*}
+&\min_{\theta,\mu_B} \mu_B
+\end{align*}
+Subject to,
+\begin{align*}
+\mu_B\geq &L(b^{B_j},\theta,\lambda^k)|_{b^k}^{lin}\\
+&\Delta_{b_i}L(b,\theta,\lambda^k)|_{b^k}\leq 0 \text{ if } b_i^{B_j} = b_i^U\\
+&\Delta_{b_i}L(b,\theta,\lambda^k)|_{b^k}\geq 0 \text{ if } b_i^{B_j} = b_i^L\\
+&
+\begin{aligned}
+\text{ where, }&\forall j \in UL(k,K)\\
+&k=1,2,...,K-1\\
+&\text{UL(k,K) is set of lagrange functions from k'th iteration whose qualifying constraints }\\
+&\text{satisfy at the current fixed value $\theta^K$ for current primal problem.}
+\end{aligned}\\\\
+\mu_B\geq &L(b^{B_l},\theta,\lambda^K)|_{b^K}^{lin}\\
+&\Delta_{b_i}L(b,\theta,\lambda^K)|_{b^K}\leq 0 \text{ if } b_i^{B_l} = b_i^U\\
+&\Delta_{b_i}L(b,\theta,\lambda^K)|_{b^K}\geq 0 \text{ if } b_i^{B_j} = b_i^L
+\end{align*}
+Linearization of lagrange function around $b^k$ at iteration k is defined as,
+\begin{align*}
+L^k(b,\theta,\lambda^k)|_{b^k}^{lin}&=L^k(b^k,\theta,\lambda^k)+\Delta_b L(b^k,\theta,\lambda^k)(b-b^k)
+\end{align*}
+After plugging in values of $b^k$, $\lambda^k$ and simplifying,
+\begin{align*}
+L^k(b,\theta,\lambda^k)|_{b^k}^{lin}&=-\sum_{x_h}\bar{b}_h^k(x_h)\log(\theta_h(x_h))-\sum_i \sum_{x_i,x_h} \bar{b}_{ih}^k(x_i,x_h)\log(\theta_{ih}(x_i,x_h))+\frac{1}{M}\sum_m\sum_{x_h}b_h^{m^k}(x_h)\log b_h^{m^k}(x_h)\\
+&+\lambda^k_{\theta_h}\left(\sum_{x_h}\theta_h(x_h)-1 \right)+\sum_{i, x_h}\lambda^k_{\theta_{ih}}(x_h)\left(\sum_{x_i}\theta_{ih}(x_i,x_h)-1\right)\\
+&-\sum_{x_h}(\bar{b}_h(x_h)-\bar{b}_h^k(x_h))\log \theta_h(x_h)-\sum_i\sum_{x_i,x_h}( \bar{b}_{ih}(x_i,x_h)- \bar{b}_{ih}^k(x_i,x_h))\log(\theta_{ih}(x_i,x_h))\\
+&\frac{1}{M}\sum_m\sum_{x_h}(1+\log b_h^{m^k}(x_h))(b_h^m(x_h)-b_h^{m^k}(x_h))+\sum_{x_h}\lambda_h^k(x_h)(\bar{b}_h(x_h)-\bar{b}^k_h(x_h))\\
+&-\sum_{x_h}\frac{1}{M}\lambda_h^k(x_h)(b_h^m(x_h)-b_h^{m^k}(x_h))+\sum_i\sum_{x_i,x_h}\lambda^k_{ih}(x_i,x_h)(\bar{b}_{ih}(x_i,x_h)-\bar{b}^k_{ih}(x_i,x_h))\\
+&-\sum_i\sum_{x_h}\frac{1}{M}\sum_m\lambda^k_{ih}(x_i^m,x_h)(b_h^m(x_h)-b_h^{m^k}(x_h))+\sum_m\lambda_m^k\sum_{x_h}(b_h^k(x_h)-b_h^{m^k}(x_h))
+\end{align*}
+Canceling out some terms,
+\begin{align*}
+L^k(b,\theta,\lambda^k)|_{b^k}^{lin}&=\lambda^k_{\theta_h}\left(\sum_{x_h}\theta_h(x_h)-1 \right)+\sum_{i, x_h}\lambda^k_{\theta_{ih}}(x_h)\left(\sum_{x_i}\theta_{ih}(x_i,x_h)-1\right)\\
+&-\sum_{x_h}\bar{b}_h(x_h)\log \theta_h(x_h)-\sum_i\sum_{x_i,x_h} \bar{b}_{ih}(x_i,x_h)\log(\theta_{ih}(x_i,x_h)) - \frac{1}{M}\sum_m\sum_{x_h} b_h^{m^k}(x_h)\\
+&\frac{1}{M}\sum_m\sum_{x_h}(1+\log b_h^{m^k}(x_h))b_h^m(x_h)+\sum_{x_h}\lambda_h^k(x_h)(\bar{b}_h(x_h)-\bar{b}^k_h(x_h))\\
+&-\sum_{x_h}\frac{1}{M}\lambda_h^k(x_h)(b_h^m(x_h)-b_h^{m^k}(x_h))+\sum_i\sum_{x_i,x_h}\lambda^k_{ih}(x_i,x_h)(\bar{b}_{ih}(x_i,x_h)-\bar{b}^k_{ih}(x_i,x_h))\\
+&-\sum_i\sum_{x_h}\frac{1}{M}\sum_m\lambda^k_{ih}(x_i^m,x_h)(b_h^m(x_h)-b_h^{m^k}(x_h))+\sum_m\lambda_m^k\sum_{x_h}(b_h^m(x_h)-b_h^{m^k}(x_h))
+\end{align*}
+\\ After Summing up the terms includes both ($b_h^{m^k}(x_h)$, and $b_h^{m}(x_h)$) and substitute for ($\lambda_h^k(x_h)$, and $\lambda^k_{ih}(x_i,x_h)$)
+
+\begin{align*}
+L^k(b,\theta,\lambda^k)|_{b^k}^{lin}&=\lambda^k_{\theta_h}\left(\sum_{x_h}\theta_h(x_h)-1 \right)+\sum_{i, x_h}\lambda^k_{\theta_{ih}}(x_h)\left(\sum_{x_i}\theta_{ih}(x_i,x_h)-1\right)\\
+&-\sum_{x_h}\bar{b}_h(x_h)\log \theta_h(x_h)-\sum_i\sum_{x_i,x_h} \bar{b}_{ih}(x_i,x_h)\log(\theta_{ih}(x_i,x_h)) + \frac{1}{M}\sum_m\sum_{x_h} b_h^{m^k}(x_h) \log(b_h^{m^k}(x_h))\\
+& + \sum_{x_h}\log(\theta_h^k(x_h))(\bar{b}_h(x_h)-\bar{b}^k_h(x_h)) +\sum_i\sum_{x_i,x_h}\log(\theta^k_{ih}(x_i,x_h))(\bar{b}_{ih}(x_i,x_h)-\bar{b}^k_{ih}(x_i,x_h))
+\end{align*}
+Now we can write the equation in the form
+\begin{align*}
+L^k(b,\theta,\lambda^k)|_{b^k}^{lin}&=\lambda^k_{\theta_h}\left(\sum_{x_h}\theta_h(x_h)-1 \right)+\sum_{i, x_h}\lambda^k_{\theta_{ih}}(x_h)\left(\sum_{x_i}\theta_{ih}(x_i,x_h)-1\right)
+\\
+& - \sum_{x_h}\log(\theta_h^k(x_h))\bar{b}^k_h(x_h) -\sum_i\sum_{x_i,x_h}\log(\theta^k_{ih}(x_i,x_h))\bar{b}^k_{ih}(x_i,x_h)+ \frac{1}{M}\sum_m\sum_{x_h} b_h^{m^k}(x_h) \log(b_h^{m^k}(x_h))
+\\&+\sum_{x_h}\bar{b}_h(x_h)(\log(\theta_h^k(x_h)) - \log \theta_h(x_h))+\sum_i\sum_{x_i,x_h} \bar{b}_{ih}(x_i,x_h)(\log(\theta^k_{ih}(x_i,x_h)) - \log(\theta_{ih}(x_i,x_h)) )
+\end{align*}
+
+We can see that first line of the equation depends only on $\theta$, the second line equals to a constant, and the third line depends on both $\theta$ and the connected values \\
+\\Now Let's find the derivatives with respect to $\theta$
+\begin{align*}
+\frac{\partial L^k(b,\theta,\lambda^k)|_{b^k}^{lin}}{\partial \theta_h(x_h)}&=\lambda^k_{\theta_h} - \frac{\bar{b}_h(x_h)}{\theta_h(x_h)}=0\Rightarrow \theta_h(x_h)= \frac{\bar{b}_h(x_h)}{\lambda^k_{\theta_h} } \\
+\frac{\partial L^k(b,\theta,\lambda^k)|_{b^k}^{lin}}{\partial \theta^k_{ih}(x_i,x_h)}&=\lambda^k_{\theta_{ih}}(x_h) - \frac{\bar{b}_h(x_h)}{\theta^k_{ih}(x_i,x_h)}=0\Rightarrow \theta^k_{ih}(x_i,x_h)= \frac{\bar{b}_h(x_h)}{\lambda^k_{\theta_{ih}}(x_h) }
+\end{align*}
+\end{document}

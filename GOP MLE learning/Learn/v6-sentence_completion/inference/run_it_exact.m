@@ -1,0 +1,23 @@
+load('../trained_5000x5_words_0.1.mat');
+addpath('../');
+test_data_size=1000;
+test_samples=zeros(test_data_size,2*max_line_size);
+test_samples(:,output)=training_data(sample_size-test_data_size+(1:test_data_size),1:max_line_size);
+test_samples(:,hidden)=-1;
+fid = fopen('results.txt', 'w') ;
+results={[],[],[],[],[]};
+characters_to_predict=2;
+total_correct=0;
+for i=1:test_data_size
+    positions=2*randsample(max_line_size,characters_to_predict)'; % generate three random character positions to predict
+    input=setdiff(output,positions);
+    sample=test_samples(i,:);
+    true_sample=sample;
+    sample(positions)=-1;
+    sample(positions)=bp_predict_characters( A,output,[],hidden,positions,domain_sizes,theta_i,theta_c_learned,sample );
+    fprintf(fid,'%d.\n%s\n%s\n\n',i,get_sentence(dictionary,true_sample,output),get_sentence(dictionary,sample,output));
+%     results{positions/2}=[results{positions/2},sample(positions)];
+    total_correct=total_correct+characters_to_predict-nnz(true_sample-sample);
+end
+fclose(fid);
+accuracy=total_correct/(characters_to_predict*test_data_size)

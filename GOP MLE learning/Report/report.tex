@@ -1,0 +1,231 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{esint}
+\title{Structured learning with latent variables}
+\DeclareMathOperator*{\argmax}{arg\,max}
+
+\newcommand{\avsum}{\mathop{\mathpalette\avsuminner\relax}\displaylimits}
+
+\makeatletter
+\newcommand\avsuminner[2]{%
+  {\sbox0{$\m@th#1\sum$}%
+   \vphantom{\usebox0}%
+   \ooalign{%
+     \hidewidth
+     \smash{\vrule height\dimexpr\ht0+1pt\relax depth\dimexpr\dp0+1pt\relax}%
+     \hidewidth\cr
+     $\m@th#1\sum$\cr
+   }%
+  }%
+}
+\makeatother
+
+\begin{document}
+\maketitle
+\section{Model}
+In our model, X is a set of input variables, Y is a set of output variables and H is a set of latent variables. $X\cup Y\cup H = V$ is set of all variables.$(x_X,x_Y,x_H)$ follows a
+conditional model,
+\begin{equation}
+  p(x_Y,x_H|x_X,w)=\frac{1}{Z(x_X;w)}\exp[{w^T\phi(x_X,x_Y,x_H)}]\\
+\end{equation}
+Writing it as a log-linear model over complete representation,
+\begin{equation}
+  p(x_Y,x_H|x_X,\theta)=\frac{1}{Z(x_X;\theta)}\prod_{\alpha \beta \gamma}\exp[\theta_{\alpha\beta\gamma}(x_{\alpha},x_{\beta},x_{\gamma})]\\
+\end{equation}
+Here $\alpha\subseteq X, \beta\subseteq Y, \gamma\subseteq H$ and $\alpha\beta\gamma\in F$. $\alpha$, $\beta$ and $\gamma$ form a clique $\alpha\beta\gamma$ in the graph and is associated with a factor $\theta_{\alpha\beta\gamma}$.\\
+We use power sum operator, which is defined as,\\
+\begin{equation*}
+\avsum_{x_i}^{\tau_i}f(x_i)=\left[\sum_{x_i}f(x_i)^{\frac{1}{\tau_i}}\right]^{\tau_i}
+\end{equation*}
+The power sum reduces to standard sum when $\tau_i$=1 and approaches to $\max_x f(x)$ when $\tau_i\to 0^+$.\\
+Define $\phi_{A}(\theta)$ for some subset A of variables V as following,
+\begin{align*}
+\phi_A(\theta)&=\log\avsum_{x_A}^{\tau_A}\exp\left[ \sum_{\alpha\beta\gamma}\theta_{\alpha\beta\gamma}(x_{\alpha},x_{\beta},x_{\gamma})\right]\\
+\end{align*}
+$\tau_A$ is set of $\tau$ values associated with each variable in A. By setting these variables $\tau_A$ to 0 or 1, we can convert the equation above into max or sum problem.\\
+\section{Perceptron learning}
+To classify all data points correctly, we want, for each data point m
+\begin{align*}
+  \sum_{x_H} p(x_Y^m,x_H|x_X^m;\theta) &\geq \max_{x_Y}\sum_{x_H} p(x_Y,x_H|x_X^m;\theta)
+\end{align*}
+Equivalently,
+\begin{align*}
+  \sum_{x_H} p(x_X^m,x_Y^m,x_H|\theta) &\geq \max_{x_Y}\sum_{x_H} p(x_X^m,x_Y,x_H|\theta)
+  \end{align*}
+  Rewriting it using power sum operator,
+  \begin{align*}
+  \log\avsum_{x_H}^{\tau_H}\exp\left [\sum_{\alpha\beta\gamma}\theta_{\alpha\beta\gamma}(x_{\alpha}^m,x_{\beta}^m,x_{\gamma})\right ] &\geq \log\avsum_{x_Y,x_H}^{\tau_Y,\tau_H}\exp\left [\sum_{\alpha\beta\gamma}\theta_{\alpha\beta\gamma}(x_{\alpha}^m,x_{\beta},x_{\gamma})\right ]
+\end{align*}
+Here $\tau_H$ is set of 1s and $\tau_y$ is set of 0s. Power sum operations are applied in order, first on H variables then Y variables, along a fixed order and are not commutative.\\\\The equation above can be written as,
+\begin{align*}
+\phi_H(\theta|x_X^m,x_Y^m)\geq\phi_{Y\cup H}(\theta|x_X^m)
+\end{align*}
+Let's define L as,
+\begin{align*}
+  L(\theta)&=\phi_H(\theta|x_X^m,x_Y^m) - \phi_{Y\cup H}(\theta|x_X^m)\geq 0\\
+  \end{align*}
+As described in \cite{Ping2015}, including cost-shifting variables to both $\phi_H(\theta|x_X^m,x_Y^m)$ and $\phi_{Y\cup H}(\theta|x_X^m)$ in the equation above,
+\begin{align*}
+  L(\theta,\delta,\zeta)&=\log\avsum_{x_H}^{\tau_H}\exp\left [ \sum_{i\in H}\sum_{\alpha\beta\gamma \in N_i} \delta_i^{\alpha\beta\gamma}(x_i) + \sum_{\alpha\beta\gamma \in F}(\theta_{\alpha\beta\gamma}(x_{\alpha}^m,x_{\beta}^m,x_{\gamma})-\sum_{i\in \gamma}\delta_i^{\alpha\beta\gamma}(x_i)) \right ] \\&\hspace{5mm}-\log\avsum_{x_Y,x_H}^{\tau_Y,\tau_H}\exp\left [ \sum_{i\in Y\cup H}\sum_{\alpha\beta\gamma \in N_i} \zeta_i^{\alpha\beta\gamma}(x_i) + \sum_{\alpha\beta\gamma \in F}(\theta_{\alpha\beta\gamma}(x_{\alpha}^m,x_{\beta},x_{\gamma})-\sum_{i\in \beta\gamma}\zeta_i^{\alpha\beta\gamma}(x_i)) \right ] 
+  \end{align*}
+where $N_i=\left\{ \alpha\beta\gamma | \alpha\beta\gamma \ni i \right\}$ is set of cliques incident to i. $\delta_i^{\alpha\beta\gamma}$ and $\zeta_i^{\alpha\beta\gamma}$ are set of cost-shifting variables defined on each variable-clique pair, which can be optimized to provide tighter upper bound later.\\\\
+Using split-weights according to Theorem4.1 in \cite{Ping2015},
+\begin{align}
+ L(\theta,\delta,\zeta,w,\omega)&\approx \sum_{i\in H}\log\avsum_{x_i}^{w_i}\exp\left [ \sum_{\alpha\beta\gamma \in N_i} \delta_i^{\alpha\beta\gamma}(x_i)\right ] + \sum_{\alpha\beta\gamma \in F}\log\avsum_{x_{\gamma}}^{w^{\gamma}}\exp\left [\theta_{\alpha\beta\gamma}(x_{\alpha}^m,x_{\beta}^m,x_{\gamma})-\sum_{i\in \gamma}\delta_i^{\alpha\beta\gamma}(x_i) \right ] \nonumber \\ \label{split-weight}&\hspace{-5mm}- \sum_{i\in Y\cup H}\log\avsum_{x_i}^{\omega_i}\exp\left [ \sum_{\alpha\beta\gamma \in N_i} \zeta_i^{\alpha\beta\gamma}(x_i)\right ] - \sum_{\alpha\beta\gamma \in F}\log\avsum_{x_{\beta\gamma}}^{\omega^{\beta\gamma}}\exp\left [\theta_{\alpha\beta\gamma}(x_{\alpha}^m,x_{\beta},x_{\gamma})-\sum_{i\in \beta\cup \gamma}\zeta_i^{\alpha\beta\gamma}(x_i) \right ] 
+\end{align}
+Here, in first part of the equation, the new weights $w=\{w_i,w_i^{\gamma}|\forall(i,\gamma),i\in\gamma, w_i^{\gamma}\geq0\}$ should satisfy,
+\begin{equation*}
+w_i+\sum_{\alpha\beta\gamma\in N(i)}w_i^{\gamma}=\tau_i
+\end{equation*}
+where $\tau_i\in \tau_H$ is 1 as we set it earlier. Similarly for the second part of the equation,
+\begin{equation*}
+\omega_i+\sum_{\alpha\beta\gamma\in N(i)}\omega_i^{\beta\gamma}=\tau_i
+\end{equation*}
+where $i\in Y\cup H$ and $\tau_i$ is either 0 or 1.\\
+All power sum operations in \ref{split-weight} are applied in order, first on H variables and then on Y variables, along a fixed order and are not commutative.\\
+%In \ref{split-weight}, for second part to be greater than first part, as it should be, following constraints are sufficient:
+%\begin{align*}
+%w_i&=\omega_i \hspace{5mm} \forall i\in H, \alpha\beta\gamma\ni i\\
+%\delta_i^{\alpha\beta\gamma}&=\zeta_i^{\alpha\beta\gamma}\hspace{5mm} \forall i\in H, \alpha\beta\gamma\ni i\\
+%\zeta_i^{\alpha\beta\gamma}&=0\hspace{5mm} \forall i\in Y, \alpha\beta\gamma\ni i
+%\end{align*}
+Converting L in \ref{split-weight} to dual representations as described in Theorem-4.2 in \cite{Ping2015},
+\begin{align}
+L(\theta,b,b',w,\omega)&= \max_{b\in L(G_1)}  \left\{ \langle \theta,b \rangle+\sum_{i\in H}w_iH(x_i;b_i)+\sum_{\alpha\beta\gamma\in F}\sum_{i\in \gamma}w_i^{\gamma}H(x_i|x_{pa_i^{\alpha\beta\gamma}};b_{\alpha\beta\gamma}) \right \} \nonumber \\\label{dual}&\hspace{5mm}- \max_{b'\in L(G_2)}  \left\{ \langle \theta,b' \rangle+\sum_{i\in Y\cup H}\omega_iH(x_i;b'_i)+\sum_{\alpha\beta\gamma\in F}\sum_{i\in \beta\gamma}\omega_i^{\beta\gamma}H(x_i|x_{pa_i^{\alpha\beta\gamma}};b'_{\alpha\beta\gamma})  \right\}
+\end{align}
+
+
+
+%\subsection{Proof: L is concave in $b$}
+%There are two types of variables in $b$: $b_i(x_i)$ and $b_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})$. We will compute second order partial derivatives of L and construct Hessian matrix to check concavity.
+%After expanding entropy terms in first part of L, it can be written as:
+%\begin{align*}
+%L(\theta,b,b',w,\omega)&= \max_{b\in L(G_1)}  \left\{ \langle \theta,b \rangle-\sum_{i\in H}w_i\sum_{x_i}b_i(x_i)\log b_i(x_i) -\sum_{\alpha\beta\gamma\in F}\sum_{i\in \gamma}w_i^{\gamma}\sum_{x_{\alpha\beta\gamma}}b_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})\log b_{\alpha\beta\gamma}(x_i|x_{pa_i^{\alpha\beta\gamma}}) \right \} \nonumber \\&\hspace{5mm}- \max_{b'\in L(G_2)}  \left\{ \langle \theta,b' \rangle+\sum_{i\in Y\cup H}\omega_iH(x_i;b'_i)+\sum_{\alpha\beta\gamma\in F}\sum_{i\in \beta\gamma}\omega_i^{\beta\gamma}H(x_i|x_{pa_i^{\alpha\beta\gamma}};b'_{\alpha\beta\gamma})  \right\} - \frac{\lambda}{2}||\theta||^2
+%\end{align*}
+%Here $pa_i^{\alpha\beta\gamma}$ are variables that are summed out latter than $i$ in clique $\alpha\beta\gamma$, that is $pa_i^{\alpha\beta\gamma}=\{\ j\in \alpha\beta\gamma\ |\ j \succ i\ \}$.\\\\
+%We can further expand $b_{\alpha\beta\gamma}(x_i|x_{pa_i^{\alpha\beta\gamma}})$.
+%\begin{align*}
+%L(\theta,b,b',w,\omega)&= \max_{b\in L(G_1)}  \left\{ \langle \theta,b \rangle-\sum_{i\in H}w_i\sum_{x_i}b_i(x_i)\log b_i(x_i) -\sum_{\alpha\beta\gamma\in F}\sum_{i\in \gamma}w_i^{\gamma}\sum_{x_{\alpha\beta\gamma}}\left\{ b_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})\log\left(\sum_{x_{ch_i^{\alpha\beta\gamma}}} b_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})\right) \right.\right. \\ &\hspace{5mm}\left. \left. - b_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})\log\left(\sum_{x_i,x_{ch_i^{\alpha\beta\gamma}}} b_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})\right)\right\} \right \} \nonumber \\&\hspace{5mm}- \max_{b'\in L(G_2)}  \left\{ \langle \theta,b' \rangle+\sum_{i\in Y\cup H}\omega_iH(x_i;b'_i)+\sum_{\alpha\beta\gamma\in F}\sum_{i\in \beta\gamma}\omega_i^{\beta\gamma}H(x_i|x_{pa_i^{\alpha\beta\gamma}};b'_{\alpha\beta\gamma})  \right\} - \frac{\lambda}{2}||\theta||^2
+%\end{align*}
+%Here $ch_i^{\alpha\beta\gamma}$ are variables that are summed out before $i$ in clique $\alpha\beta\gamma$, that is $ch_i^{\alpha\beta\gamma}=\{\ j\in \alpha\beta\gamma\ |\ j \prec i\ \}$. Also note, $\alpha\beta\gamma\ =\ ch_i^{\alpha\beta\gamma}\cup \{x(i)\}\cup pa_i^{\alpha\beta\gamma}$. \\\\
+%Computing first order derivatives with $b_i(x_i)$ and $b_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})$:
+%\begin{align*}
+%\frac{\partial L}{\partial b_i(x_i)}&=\theta_i(x_i) - w_i - w_i\log\left(b_i(x_i)\right)\\
+%\frac{\partial L}{\partial b_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})}&=\theta_{\alpha\beta\gamma}(x_{\alpha\beta\gamma}) - \sum_{i\in \gamma}w_i^{\gamma}\left[\frac{b_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})}{\sum_{x_{ch_i^{\alpha\beta\gamma}}}b_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})}+\log\left(\sum_{x_{ch_i^{\alpha\beta\gamma}}} b_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})\right)-\frac{b_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})}{\sum_{x_i,x_{ch_i^{\alpha\beta\gamma}}} b_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})}\right. \\ &\hspace{5mm}\left. - \log\left(\sum_{x_i,x_{ch_i^{\alpha\beta\gamma}}} b_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})\right)\right]
+%\end{align*}
+%Computing second order derivatives with $b_i(x_i)$ and $b_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})$:
+%\begin{align*}
+%\frac{\partial^2 L}{\partial b_i(x_i)^2}&=-\frac{w_i}{b_i(x_i)}\\
+%\frac{\partial^2 L}{\partial b_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})\partial b_i(x_i)}&=0\\
+%\frac{\partial^2 L}{\partial b_i(x_i) \partial b_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})}&=0\\
+%\frac{\partial^2 L}{\partial b_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})^2}&=- \sum_{i\in \gamma}w_i^{\gamma}\left[ \frac{\left(\sum_{x_{ch_i^{\alpha\beta\gamma}}}b_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})\right) - b_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})}{\left(\sum_{x_{ch_i^{\alpha\beta\gamma}}}b_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})\right)^2} + \frac{1}{\sum_{x_{ch_i^{\alpha\beta\gamma}}}b_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})}\right. \\ &\hspace{5mm}\left.-\frac{\left(\sum_{x_i,x_{ch_i^{\alpha\beta\gamma}}}b_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})\right) - b_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})}{\left(\sum_{x_i,x_{ch_i^{\alpha\beta\gamma}}}b_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})\right)^2}-\frac{1}{\sum_{x_i,x_{ch_i^{\alpha\beta\gamma}}}b_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})}\right]\\
+%\end{align*}
+%It is not clear to see that last derivative is negative. Let's denote following:\\
+%\begin{align*}
+%\eta&=\sum_{x_{ch_i^{\alpha\beta\gamma}}}b_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})\\
+%\eta'&=\sum_{x_i,x_{ch_i^{\alpha\beta\gamma}}}b_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})
+%\end{align*}
+%Here, note that $\eta'\geq \eta$, since $b_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})\geq 0$.\\
+%Rewriting the derivative in form of $\eta$ and $\eta'$:\\
+%\begin{align*}
+%\frac{\partial^2 L}{\partial b_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})^2}&=- \sum_{i\in \gamma}w_i^{\gamma}\left[\frac{\eta-b_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})}{\eta^2}+\frac{1}{\eta}-\frac{\eta'-b_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})}{\eta'^2}-\frac{1}{\eta'}\right]
+%\end{align*}
+%Taking least common denominator and rearranging in factors:
+%\begin{align*}
+%\frac{\partial^2 L}{\partial b_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})^2}&=- \sum_{i\in \gamma}w_i^{\gamma}\left[\frac{\eta'^2\eta-\eta'^2b_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})+\eta'^2\eta-\eta^2\eta'+\eta^2b_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})-\eta^2\eta'}{\eta^2\eta'^2}\right]\\
+%&=- \sum_{i\in \gamma}w_i^{\gamma}\left[\frac{2\eta'^2\eta-\eta'^2b_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})+\eta^2b_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})-2\eta^2\eta'}{\eta^2\eta'^2}\right]\\
+%&=- \sum_{i\in \gamma}w_i^{\gamma}\left[\frac{2\eta'\eta\left(\eta'-\eta\right)-b_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})\left(\eta'^2-\eta^2\right)}{\eta^2\eta'^2}\right]\\
+%&=- \sum_{i\in \gamma}w_i^{\gamma}\left[\frac{\left(\eta'-\eta\right)\left(2\eta'\eta-b_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})\left(\eta'+\eta\right)\right)}{\eta^2\eta'^2}\right]\\
+%&=- \sum_{i\in \gamma}w_i^{\gamma}\left[\frac{\left(\eta'-\eta\right)\left(\eta'(\eta-b_{\alpha\beta\gamma}(x_{\alpha\beta\gamma}))+\eta(\eta'-b_{\alpha\beta\gamma}(x_{\alpha\beta\gamma}))\right)}{\eta^2\eta'^2}\right]\\
+%&\leq0
+%\end{align*}
+%Since $\eta'\geq\eta\geq b_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})$, all terms in the numerator are positive. So, the whole term is negative.\\\\
+%The hessian matrix, that is formed, has $\frac{\partial^2 L}{\partial b_i(x_i)^2}$ and $\frac{\partial^2 L}{\partial b_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})^2}$ terms on the diagonal, which are negative values. All other entries in hessian matrix are 0. So the matrix is negative semi-definite. Thus, L is concave in b.
+
+
+
+
+$pa_i^{\alpha\beta\gamma}$ are variables that are summed out later than $i$ in clique $\alpha\beta\gamma$.
+We can expand and rearrange conditional entropy terms in equation \ref{dual} and rewrite it as,
+\begin{align*}
+L(\theta,b,b',w,\omega)&= \max_{b\in L(G_1)}  \left\{ \langle \theta,b \rangle+\sum_{i\in H}w_iH(x_i;b_i)+\sum_{\alpha\beta\gamma\in F} \left\{ w_1^{\gamma}H(x_{\alpha\beta\gamma};b_{\alpha\beta\gamma})+\sum_{[i,j]\sqsubseteq \gamma}(w_j^{\gamma}-w_i^{\gamma})H(x_{pa_i^{\alpha\beta\gamma}};b_{pa_i^{\alpha\beta\gamma}}) \right \}\right \} \nonumber \\&\hspace{-5mm}- \max_{b'\in L(G_2)}  \left\{ \langle \theta,b' \rangle+\sum_{i\in Y\cup H}\omega_iH(x_i;b'_i)+\sum_{\alpha\beta\gamma\in F}\left\{ \omega_1^{\beta\gamma}H(x_{\alpha\beta\gamma};b'_{\alpha\beta\gamma})+\sum_{[i,j]\sqsubseteq \beta\gamma}(\omega_j^{\beta\gamma}-\omega_i^{\beta\gamma})H(x_{pa_i^{\alpha\beta\gamma}};b'_{pa_i^{\alpha\beta\gamma}}) \right \}  \right\}
+\end{align*}
+where $x_{\alpha\beta\gamma}=\{x_1,x_2,...,x_i,x_j,...,x_n\}$ such that i and j are adjacent in summation order. 
+\subsection{Frank-Wolfe optimization}
+We need to optimize following function (with L2 regularizer),
+\begin{align}
+L(\theta,b,b',w,\omega)&= \max_{\theta}\left\{\sum_{m=1}^{M} \max_{b^m\in L(G_1)}\min_{b'^m\in L(G_2)}  \left\{ \langle \theta,b^m \rangle+\sum_{i\in H}w_iH(x_i;b^m_i)+\sum_{\alpha\beta\gamma\in F} \Bigg\{ w_1^{\gamma}H(x_{\alpha\beta\gamma};b^m_{\alpha\beta\gamma}) \Bigg. \right. \right. \nonumber\\
+&\left. \left. \Bigg. +\sum_{[i,j]\sqsubseteq \gamma}(w_j^{\gamma}-w_i^{\gamma})H(x_{pa_i^{\alpha\beta\gamma}};b^m_{pa_i^{\alpha\beta\gamma}}) \Bigg \}- \langle \theta,b'^m \rangle-\sum_{i\in Y\cup H}\omega_iH(x_i;b'^m_i) -\sum_{\alpha\beta\gamma\in F}\Bigg\{ \omega_1^{\beta\gamma}H(x_{\alpha\beta\gamma};b'^m_{\alpha\beta\gamma})\Bigg. \right. \right.\nonumber \\ &\left. \left. \Bigg.+\sum_{[i,j]\sqsubseteq \beta\gamma}(\omega_j^{\beta\gamma}-\omega_i^{\beta\gamma})H(x_{pa_i^{\alpha\beta\gamma}};b'^m_{pa_i^{\alpha\beta\gamma}}) \Bigg \}  \right\} - \frac{\lambda}{2}||\theta||^2\right\}
+\end{align}
+Below are second order partial derivatives with respect to $\theta$ and $b$, which are diagonal elements of Hessian matrix:
+\begin{align*}
+\frac{\partial^2 L}{\partial \theta_i^2}&=-\lambda\\
+\frac{\partial^2 L}{\partial \theta_{\alpha\beta\gamma}^2}&=-\lambda\\
+\frac{\partial^2 L}{\partial {b_i^m}^2}&=-\frac{w_i}{b_i^m(x_i)}\\
+\frac{\partial^2 L}{\partial {b_{\alpha\beta\gamma}^m}^2}&=-\frac{w_1^{\gamma}}{b_{\alpha\beta\gamma}^m}\\
+\frac{\partial^2 L}{\partial {b_{pa_i^{\alpha\beta\gamma}}^m}^2}&=-\frac{(w_j^{\gamma}-w_i^{\gamma})}{b_{pa_i^{\alpha\beta\gamma}}^m}
+\end{align*}
+We can see that these terms are negative given $w_j^{\gamma}>w_i^{\gamma}$. Also, off diagonal terms of Hessian matrix are:
+\begin{align*}
+\frac{\partial^2 L}{\partial \theta_i b_i^m}&=1\\
+\frac{\partial^2 L}{\partial b_i^m \theta_i}&=1\\
+\frac{\partial^2 L}{\partial \theta_{\alpha\beta\gamma} b_{\alpha\beta\gamma}^m}&=1\\
+\frac{\partial^2 L}{\partial b_{\alpha\beta\gamma}^m \theta_{\alpha\beta\gamma}}&=1\\
+\end{align*}
+All other off-diagonal terms are zero. For the Hessian matrix to be diagonally dominant and negative semi-definite, following conditions need to hold for each clique $\alpha\beta\gamma$ and each assignment to $x_i$ and $x_{\alpha\beta\gamma}$:
+\begin{align*}
+w_j^{\gamma}&\geq w_i^{\gamma}\\
+\omega_j^{\beta\gamma}&\geq \omega_i^{\beta\gamma}\\
+\lambda &> \frac{b_i^m(x_i)}{w_i}\\
+\lambda &>\frac{b_{\alpha\beta\gamma}^m(x_{\alpha\beta\gamma})}{w_1^{\gamma}}\\
+\end{align*}
+Extra constraints on $b_{pa_i^{\alpha\beta\gamma}}^m$ are following:
+\begin{align*}
+b_{pa_i^{\alpha\beta\gamma}}^m(x_{pa_i^{\alpha\beta\gamma}})=\sum_{j\preceq i}\sum_{x_j}b_{\alpha\beta\gamma}^m(x_{\alpha\beta\gamma})\\
+b_{pa_i^{\alpha\beta\gamma}}'^m(x_{pa_i^{\alpha\beta\gamma}})=\sum_{j\preceq i}\sum_{x_j}b_{\alpha\beta\gamma}'^m(x_{\alpha\beta\gamma})
+\end{align*}
+If these constraints are satisfied, then L is concave in $\{\theta,b\}$ and convex in $b'$. Partial derivatives with respect to $b'$ are similar to those of $b$, but with inverted sign. 
+Simplifying this equation and expanding entropy terms to compute $\Delta L$.
+\begin{align*}
+L(\theta,b,b',w,\omega)&= \max_{\theta}\max_{b} \min_{b'}\sum_{m=1}^M  \left\{\langle \theta, b^m-b'^m \rangle -\sum_{i\in H}\sum_{x_i}w_ib_i^m(x_i)\log b_i^m(x_i) \right. \nonumber\\
+& -\sum_{\alpha\beta\gamma\in F}\sum_{x_{\gamma}} \Bigg\{ w_1^{\gamma}b_{\alpha\beta\gamma}^m(x_{\alpha\beta\gamma})\log b_{\alpha\beta\gamma}^m(x_{\alpha\beta\gamma})  +\sum_{[i,j]\sqsubseteq \gamma}(w_j^{\gamma}-w_i^{\gamma})b^m_{pa_i^{\alpha\beta\gamma}}(x_{pa_i^{\alpha\beta\gamma}})\log b^m_{pa_i^{\alpha\beta\gamma}}(x_{pa_i^{\alpha\beta\gamma}}) \Bigg \} \nonumber \\
+& +\sum_{i\in Y\cup H}\sum_{x_i}\omega_i b'^m_i(x_i)\log b'^m_i(x_i)  +\sum_{\alpha\beta\gamma\in F}\sum_{x_{\beta\gamma}}\Bigg\{ \omega_1^{\beta\gamma}b'^m_{\alpha\beta\gamma}(x_{\alpha\beta\gamma}) \log b'^m_{\alpha\beta\gamma}(x_{\alpha\beta\gamma}) \Big. \nonumber \\ 
+& \left. \Big.  +\sum_{[i,j]\sqsubseteq \beta\gamma}(\omega_j^{\beta\gamma}-\omega_i^{\beta\gamma})b'^m_{pa_i^{\alpha\beta\gamma}}(x_{pa_i^{\alpha\beta\gamma}})\log b'^m_{pa_i^{\alpha\beta\gamma}}(x_{pa_i^{\alpha\beta\gamma}}) \Bigg \} \right\}- \frac{\lambda}{2}||\theta||^2
+\end{align*}
+We will use Frank-Wolfe algorithm to maximize with respect to $b, \theta$ and to minimize with respect to $b'$ one step at a time as described in \cite{Tang2016}. In Frank-Wolfe implementation, we need first order derivatives of L with $ b,\theta$ and b', which are given below:
+\begin{align*}
+\frac{\partial L}{\partial b_i^m(x_i)}&=\theta_i(x_i) - w_i - w_i\log\left(b^m_i(x_i)\right)\\
+\frac{\partial L}{\partial b^m_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})}&=\theta_{\alpha\beta\gamma}(x_{\alpha\beta\gamma}) - w_1^{\gamma}- w_1^{\gamma}\log b^m_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})\\
+\frac{\partial L}{\partial b^m_{pa_i^{\alpha\beta\gamma}}(x_{pa_i^{\alpha\beta\gamma}})}&=w_i^{\gamma}-w_j^{\gamma} + (w_i^{\gamma}-w_j^{\gamma})\log b^m_{pa_i^{\alpha\beta\gamma}}(x_{pa_i^{\alpha\beta\gamma}})\\
+&\text{where, $[i,j]\sqsubseteq \alpha\beta\gamma$.}\\
+\frac{\partial L}{\partial \theta_i(x_i)}&=\sum_{m=1}^M\{b_i^m(x_i)-b_i'^m(x_i)\}-\lambda\theta_i(x_i)\\
+\frac{\partial L}{\partial \theta_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})}&=\sum_{m=1}^M\{b^m_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})-b'^m_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})\}-\lambda\theta_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})
+\end{align*}
+
+Derivatives with respect to b' are same as above, but with inverted signs. They are given below.
+\begin{align*}
+\frac{\partial L}{\partial b_i'^m(x_i)}&=-\theta_i(x_i)+ \omega_i + \omega_i\log\left(b'^m_i(x_i)\right)\\
+\frac{\partial L}{\partial b'^m_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})}&=-\theta_{\alpha\beta\gamma}(x_{\alpha\beta\gamma}) + \omega_1^{\beta\gamma}+ \omega_1^{\beta\gamma}\log b'^m_{\alpha\beta\gamma}(x_{\alpha\beta\gamma})\\
+\frac{\partial L}{\partial b'^m_{pa_i^{\alpha\beta\gamma}}(x_{pa_i^{\alpha\beta\gamma}})}&=\omega_i^{\beta\gamma}-\omega_j^{\beta\gamma} + (\omega_i^{\beta\gamma}-\omega_j^{\beta\gamma})\log b'^m_{pa_i^{\alpha\beta\gamma}}(x_{pa_i^{\alpha\beta\gamma}})\\
+&\text{where, $[i,j]\sqsubseteq \alpha\beta\gamma$.}
+\end{align*}
+\subsubsection{Exact inference for trees}
+We can use exact inference algorithms such as Belief Propagation on tree structures instead of doing approximate inference. Our exact objective that we need to optimize is following:
+\begin{align*}
+  L=\max_{\theta} \left\{ \log\avsum_{x_H}^{\tau_H}\exp\left [\sum_{\alpha\beta\gamma}\theta_{\alpha\beta\gamma}(x_{\alpha}^m,x_{\beta}^m,x_{\gamma})\right ] - \log\avsum_{x_Y,x_H}^{\tau_Y,\tau_H}\exp\left [\sum_{\alpha\beta\gamma}\theta_{\alpha\beta\gamma}(x_{\alpha}^m,x_{\beta},x_{\gamma})\right ] \right\}
+\end{align*}
+Where, $\tau_Y\rightarrow 0^+$ and $\tau_H=1$.
+Writing it in variational forms,
+\begin{align*}
+L(\theta,b,b',w,\omega)&= \max_{\theta} \left\{\max_{b\in L(G_1)}  \left\{ \langle \theta,b \rangle+\sum_{i\in H}\tau_iH(x_i;b_i)+\sum_{\alpha\beta\gamma\in F}\sum_{i\in \gamma}\tau_iH(x_i|x_{pa_i^{\alpha\beta\gamma}};b_{\alpha\beta\gamma}) \right \} \right.\nonumber \\\label{dual}&\hspace{5mm}\left. - \max_{b'\in L(G_2)}  \left\{ \langle \theta,b' \rangle+\sum_{i\in Y\cup H}\tau_iH(x_i;b'_i)+\sum_{\alpha\beta\gamma\in F}\sum_{i\in \beta\gamma}\tau_iH(x_i|x_{pa_i^{\alpha\beta\gamma}};b'_{\alpha\beta\gamma})  \right\}\right\}
+\end{align*}
+To find b and b' that maximize these two Bethe free energy formulations, we can carry out two-stage message passing with following messages:
+\begin{align*}
+m_{i\rightarrow j}(x_j)&=\sum_{x_i}\phi_i(x_i)\psi_{ij}(x_i,x_j)\prod_{k\in N(i)\char`\\ j}m_{k\rightarrow i}(x_i)\\
+\end{align*}
+where, $\phi_i(x_i)=\exp(\frac{\theta_i(x_i)}{\tau_i})$ and $\psi_{ij}(x_i,x_j)=exp(\frac{\theta_ij(x_i,x_j)}{})$
+\bibliographystyle{plain}
+\bibliography{C:/Users/drp150030/Dropbox/Projects/research/bibtex/MarginalMAP}
+\end{document}

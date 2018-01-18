@@ -1,0 +1,14 @@
+\begin{thebibliography}{1}
+
+\bibitem{Ping2015}
+Wei Ping, Qiang Liu, and Alexander Ihler.
+\newblock {Decomposition Bounds for Marginal MAP}.
+\newblock {\em Advances in Neural Information Processing Systems 28 (NIPS
+  2015)}, pages 1--9, 2015.
+
+\bibitem{Tang2016}
+Kui Tang, Nicholas Ruozzi, David Belanger, and Tony Jebara.
+\newblock {Bethe Learning of Graphical Models via MAP Decoding}.
+\newblock {\em Artificial Intelligence and Statistics (AISTATS)}, 51, 2016.
+
+\end{thebibliography}
